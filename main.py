@@ -59,9 +59,11 @@ async def handle_session_generation(client, message):
     step = session_data["step"]
     text = message.text.strip()
     
+    print(f"User {user_id} in step '{step}' sent: '{text}'")  # Debug log
+    
     if step == "api_id":
         # API ID can be any number of digits (typically 7-8 digits but can vary)
-        if text.isdigit() and len(text) >= 6:  # At least 6 digits
+        if text.isdigit() and len(text) >= 6:
             try:
                 api_id = int(text)
                 session_data["api_id"] = api_id
@@ -78,7 +80,7 @@ async def handle_session_generation(client, message):
     
     elif step == "api_hash":
         # API Hash is typically 32 characters long
-        if len(text) >= 30:  # Allow some flexibility
+        if len(text) >= 30:
             session_data["api_hash"] = text
             session_data["step"] = "phone"
             
@@ -101,6 +103,7 @@ async def handle_session_generation(client, message):
     elif step == "code":
         # Verification codes can be 4-6 digits
         if text.isdigit() and 4 <= len(text) <= 6:
+            print(f"Processing verification code: {text}")  # Debug log
             await handle_verification_code(client, message, text)
         else:
             await message.reply_text("❌ Invalid verification code. Please send only the numbers (4-6 digits).")
@@ -126,6 +129,8 @@ async def start_session_generation(bot_client, message, session_data):
         session_data["phone_code_hash"] = sent_code.phone_code_hash
         session_data["step"] = "code"
         
+        print(f"User {user_id} step changed to 'code'")  # Debug log
+        
         await message.reply_text(
             "📨 <b>Verification code sent!</b>\n\n"
             "Please check your Telegram app and send the verification code here.\n\n"
@@ -141,13 +146,22 @@ async def start_session_generation(bot_client, message, session_data):
 async def handle_verification_code(client, message, code):
     user_id = message.from_user.id
     
-    if user_id not in user_sessions or user_sessions[user_id]["step"] != "code":
+    print(f"Handling verification code for user {user_id}: {code}")  # Debug log
+    
+    if user_id not in user_sessions:
+        print(f"User {user_id} not in sessions")  # Debug log
+        return
+        
+    if user_sessions[user_id]["step"] != "code":
+        print(f"User {user_id} not in code step, current step: {user_sessions[user_id]['step']}")  # Debug log
         return
     
     session_data = user_sessions[user_id]
     
     try:
         temp_client = session_data["temp_client"]
+        
+        await message.reply_text("🔐 Verifying code...")
         
         await temp_client.sign_in(
             session_data["phone"],
@@ -188,6 +202,7 @@ async def handle_verification_code(client, message, code):
             
     except Exception as e:
         await message.reply_text(f"❌ Error during sign in: {str(e)}")
+        print(f"Sign in error for user {user_id}: {e}")  # Debug log
         
         try:
             await session_data["temp_client"].disconnect()
@@ -212,6 +227,21 @@ async def cancel_session(client, message):
         await message.reply_text("❌ Session generation cancelled.")
     else:
         await message.reply_text("ℹ️ No active session generation to cancel.")
+
+@app.on_message(filters.command("debug") & filters.private)
+async def debug_command(client, message):
+    user_id = message.from_user.id
+    if user_id in user_sessions:
+        session_data = user_sessions[user_id]
+        debug_info = f"""
+<b>Debug Info:</b>
+User ID: <code>{user_id}</code>
+Current Step: <code>{session_data.get('step', 'None')}</code>
+Has temp_client: <code>{bool(session_data.get('temp_client'))}</code>
+        """
+        await message.reply_text(debug_info, parse_mode=enums.ParseMode.HTML)
+    else:
+        await message.reply_text("No active session found.")
 
 if __name__ == "__main__":
     print("🤖 String Session Bot Starting...")
