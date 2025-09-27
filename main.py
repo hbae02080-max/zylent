@@ -1,6 +1,5 @@
 import os
-from keep_alive import keep_alive
-from pyrogram import Client, filters
+from pyrogram import Client, filters, enums  # Add enums import
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import asyncio
 
@@ -36,7 +35,7 @@ This bot helps you generate Pyrogram string sessions for your Telegram account.
         [InlineKeyboardButton("🚀 Generate Session", callback_data="generate")]
     ])
     
-    await message.reply_text(welcome_text, reply_markup=keyboard, parse_mode="HTML")
+    await message.reply_text(welcome_text, reply_markup=keyboard, parse_mode=enums.ParseMode.HTML)
 
 @app.on_callback_query(filters.regex("generate"))
 async def generate_session(client, callback_query):
@@ -46,7 +45,7 @@ async def generate_session(client, callback_query):
     await callback_query.message.edit_text(
         "📝 <b>Step 1/3</b>\n\nPlease send your <b>API ID</b>:\n\n"
         "ℹ️ You can get this from https://my.telegram.org",
-        parse_mode="HTML"
+        parse_mode=enums.ParseMode.HTML
     )
 
 @app.on_message(filters.text & filters.private)
@@ -67,7 +66,7 @@ async def handle_session_generation(client, message):
             
             await message.reply_text(
                 "📝 <b>Step 2/3</b>\n\nPlease send your <b>API Hash</b>:",
-                parse_mode="HTML"
+                parse_mode=enums.ParseMode.HTML
             )
         except ValueError:
             await message.reply_text("❌ Invalid API ID. Please send a valid number.")
@@ -80,7 +79,7 @@ async def handle_session_generation(client, message):
         await message.reply_text(
             "📝 <b>Step 3/3</b>\n\nPlease send your <b>phone number</b> (with country code):\n\n"
             "Example: +1234567890",
-            parse_mode="HTML"
+            parse_mode=enums.ParseMode.HTML
         )
     
     elif step == "phone":
@@ -114,7 +113,7 @@ async def start_session_generation(bot_client, message, session_data):
             "📨 <b>Verification code sent!</b>\n\n"
             "Please check your Telegram app and send the verification code here.\n\n"
             "Format: <code>12345</code> (just the numbers)",
-            parse_mode="HTML"
+            parse_mode=enums.ParseMode.HTML
         )
         
     except Exception as e:
@@ -163,7 +162,7 @@ async def handle_verification_code(client, message):
 • You can revoke it anytime from Telegram Settings > Privacy & Security > Active Sessions
         """
         
-        await message.reply_text(session_text, parse_mode="HTML")
+        await message.reply_text(session_text, parse_mode=enums.ParseMode.HTML)
         
         del user_sessions[user_id]
         
@@ -200,6 +199,5 @@ async def cancel_session(client, message):
         await message.reply_text("ℹ️ No active session generation to cancel.")
 
 if __name__ == "__main__":
-    keep_alive()  # Start web server
     print("🤖 String Session Bot Starting...")
     app.run()
