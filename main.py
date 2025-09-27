@@ -147,7 +147,7 @@ async def handle_session_generation(client, message):
             )
     
     elif step == "code":
-        # Extract verification code (handle separators)
+        # Extract verification code (handle separators like 1x2x3x4x5)
         verification_code = extract_verification_code(text)
         
         if verification_code:
@@ -173,17 +173,15 @@ async def start_session_generation(bot_client, message, session_data):
     session_name = f"user_{user_id}_{int(time.time())}"
     
     try:
+        # Fixed: Removed unsupported parameters
         temp_client = Client(
             session_name,
             api_id=session_data["api_id"],
             api_hash=session_data["api_hash"],
             phone_number=session_data["phone"],
             device_model="iPhone 14 Pro",
-            system_version="iOS 16.1",
             app_version="9.1.0",
-            lang_code="en",
-            system_lang_code="en-US",
-            ipv6=False
+            lang_code="en"
         )
         
         await message.reply_text("📱 Connecting to Telegram...")
@@ -199,6 +197,7 @@ async def start_session_generation(bot_client, message, session_data):
         
         await message.reply_text(
             "📨 <b>Verification code sent!</b>\n\n"
+            "📝 <b>Step 4/4</b>\n\n"
             "🔐 <b>IMPORTANT - Send code like this:</b>\n"
             "• If code is 12345, send: <code>1x2x3x4x5</code>\n"
             "• If code is 6789, send: <code>6x7x8x9</code>\n\n"
@@ -338,6 +337,20 @@ async def cancel_session(client, message):
         await message.reply_text("❌ Session generation cancelled.")
     else:
         await message.reply_text("ℹ️ No active session generation to cancel.")
+
+@app.on_message(filters.command("test") & filters.private)
+async def test_code_extraction(client, message):
+    """Test command to verify code extraction works"""
+    if len(message.command) > 1:
+        test_input = message.text.split(' ', 1)[1]
+        extracted = extract_verification_code(test_input)
+        await message.reply_text(
+            f"Input: <code>{test_input}</code>\n"
+            f"Extracted: <code>{extracted}</code>",
+            parse_mode=enums.ParseMode.HTML
+        )
+    else:
+        await message.reply_text("Usage: /test 1x2x3x4x5")
 
 if __name__ == "__main__":
     print("🤖 String Session Bot Starting...")
