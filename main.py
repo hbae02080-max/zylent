@@ -1,4 +1,5 @@
 import os
+from keep_alive import keep_alive
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import asyncio
@@ -199,5 +200,6 @@ async def cancel_session(client, message):
         await message.reply_text("ℹ️ No active session generation to cancel.")
 
 if __name__ == "__main__":
+    keep_alive()  # Start web server
     print("🤖 String Session Bot Starting...")
     app.run()
