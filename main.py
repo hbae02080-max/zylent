@@ -47,6 +47,11 @@ def extract_verification_code(text):
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_command(client, message):
+    # Clear any existing session for this user
+    user_id = message.from_user.id
+    if user_id in user_sessions:
+        del user_sessions[user_id]
+    
     welcome_text = """
 🔐 <b>Zylence String Session Generator Bot</b>
 
@@ -80,16 +85,32 @@ async def generate_session(client, callback_query):
         parse_mode=enums.ParseMode.HTML
     )
 
-@app.on_message(filters.text & filters.private & ~filters.command(["start", "cancel"]))
-async def handle_session_generation(client, message):
+# SINGLE MESSAGE HANDLER - No duplicates!
+@app.on_message(filters.text & filters.private)
+async def handle_all_messages(client, message):
     user_id = message.from_user.id
+    text = message.text.strip()
     
+    # Handle commands first
+    if text.startswith('/'):
+        if text == '/cancel':
+            await cancel_session(client, message)
+            return
+        elif text.startswith('/test'):
+            await test_code_extraction(client, message)
+            return
+        elif text == '/start':
+            # Already handled by separate handler
+            return
+        else:
+            return
+    
+    # Handle session generation steps
     if user_id not in user_sessions:
         return
     
     session_data = user_sessions[user_id]
     step = session_data["step"]
-    text = message.text.strip()
     
     print(f"User {user_id} in step '{step}' sent: '{text}'")  # Debug log
     
@@ -173,7 +194,6 @@ async def start_session_generation(bot_client, message, session_data):
     session_name = f"user_{user_id}_{int(time.time())}"
     
     try:
-        # Fixed: Removed unsupported parameters
         temp_client = Client(
             session_name,
             api_id=session_data["api_id"],
@@ -322,7 +342,6 @@ async def handle_2fa_password(client, message, password):
     except Exception as e:
         await message.reply_text(f"❌ Invalid 2FA password: {str(e)}")
 
-@app.on_message(filters.command("cancel") & filters.private)
 async def cancel_session(client, message):
     user_id = message.from_user.id
     
@@ -338,10 +357,9 @@ async def cancel_session(client, message):
     else:
         await message.reply_text("ℹ️ No active session generation to cancel.")
 
-@app.on_message(filters.command("test") & filters.private)
 async def test_code_extraction(client, message):
     """Test command to verify code extraction works"""
-    if len(message.command) > 1:
+    if len(message.text.split()) > 1:
         test_input = message.text.split(' ', 1)[1]
         extracted = extract_verification_code(test_input)
         await message.reply_text(
